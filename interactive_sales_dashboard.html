@@ -1,0 +1,95 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Interactive Sales Dashboard</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .chart { margin-top: 40px; }
+  </style>
+</head>
+<body>
+
+  <h2>📊 Interactive Sales Performance Dashboard</h2>
+  <input type="file" id="fileInput" accept=".json" />
+  <div id="dashboard">
+    <div id="salesByMarket" class="chart"></div>
+    <div id="profitVsSales" class="chart"></div>
+    <div id="salesOverTime" class="chart"></div>
+    <div id="segmentPerformance" class="chart"></div>
+    <div id="topProducts" class="chart"></div>
+  </div>
+
+  <script>
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (event) {
+        const data = JSON.parse(event.target.result);
+        const records = Array.isArray(data) ? data : [data];
+
+        const salesByMarket = {};
+        const profitVsSales = { x: [], y: [] };
+        const salesOverTime = {};
+        const segmentPerformance = {};
+        const productProfits = [];
+
+        records.forEach(item => {
+          salesByMarket[item.Market] = (salesByMarket[item.Market] || 0) + item.Sales;
+          profitVsSales.x.push(item.Sales);
+          profitVsSales.y.push(parseFloat(item["Profit Margin"]));
+          const date = item["Order Date"];
+          salesOverTime[date] = (salesOverTime[date] || 0) + item.Sales;
+          segmentPerformance[item["Customer Segment"]] = (segmentPerformance[item["Customer Segment"]] || 0) + item.Sales;
+          productProfits.push({ id: item["Order Id"], profit: item["Profit Per Order"] });
+        });
+
+        Plotly.newPlot('salesByMarket', [{
+          x: Object.keys(salesByMarket),
+          y: Object.values(salesByMarket),
+          type: 'bar',
+          marker: { color: 'teal' }
+        }], { title: 'Total Sales by Market' });
+
+        Plotly.newPlot('profitVsSales', [{
+          x: profitVsSales.x,
+          y: profitVsSales.y,
+          mode: 'markers',
+          type: 'scatter',
+          marker: { size: 10, color: 'orange' }
+        }], { title: 'Profit Margin vs Sales', xaxis: { title: 'Sales' }, yaxis: { title: 'Profit Margin (%)' } });
+
+        const sortedDates = Object.keys(salesOverTime).sort();
+        Plotly.newPlot('salesOverTime', [{
+          x: sortedDates,
+          y: sortedDates.map(date => salesOverTime[date]),
+          type: 'scatter',
+          mode: 'lines+markers',
+          line: { color: 'blue' }
+        }], { title: 'Sales Trend Over Time', xaxis: { title: 'Date' }, yaxis: { title: 'Sales' } });
+
+        Plotly.newPlot('segmentPerformance', [{
+          labels: Object.keys(segmentPerformance),
+          values: Object.values(segmentPerformance),
+          type: 'pie'
+        }], { title: 'Sales by Customer Segment' });
+
+        const topProducts = productProfits.sort((a, b) => b.profit - a.profit).slice(0, 10);
+        Plotly.newPlot('topProducts', [{
+          x: topProducts.map(p => p.id),
+          y: topProducts.map(p => p.profit),
+          type: 'bar',
+          marker: { color: 'green' }
+        }], { title: 'Top 10 Orders by Profit Per Order', xaxis: { title: 'Order ID' }, yaxis: { title: 'Profit' } });
+      };
+
+      reader.readAsText(file);
+    });
+  </script>
+
+</body>
+</html>
